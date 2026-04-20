@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diagnóstico de Programação</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f7; color: #1a1a2e; line-height: 1.6; min-height: 100vh; padding: 20px; }
+  .container { max-width: 720px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); overflow: hidden; }
+  header { background: #1a1a2e; color: white; padding: 24px 28px; }
+  header h1 { font-size: 22px; margin-bottom: 6px; }
+  header p { opacity: 0.85; font-size: 14px; }
+  .progress-bar { height: 6px; background: #2d2d4a; }
+  .progress-fill { height: 100%; background: #f0a500; width: 0%; transition: width 0.3s ease; }
+  .content { padding: 32px 28px; }
+  .tela { display: none; }
+  .tela.ativa { display: block; }
+  .bloco-titulo { display: inline-block; background: #fff8dc; color: #8b6914; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .questao-num { color: #999; font-size: 13px; margin-bottom: 8px; }
+  .questao-titulo { font-size: 18px; font-weight: 600; margin-bottom: 16px; color: #1a1a2e; }
+  .enunciado { font-size: 15px; margin-bottom: 18px; color: #333; }
+  pre { background: #2d2d4a; color: #f5f5f7; padding: 16px; border-radius: 8px; overflow-x: auto; font-family: "SF Mono", Consolas, monospace; font-size: 13px; line-height: 1.5; margin-bottom: 16px; }
+  code { background: #eee; padding: 1px 5px; border-radius: 3px; font-family: "SF Mono", Consolas, monospace; font-size: 13px; }
+  .opcoes { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+  .opcao { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; background: #f5f5f7; border: 2px solid transparent; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+  .opcao:hover { background: #ebebf0; }
+  .opcao input[type="radio"] { margin-top: 3px; cursor: pointer; }
+  .opcao.selecionada { background: #fff8dc; border-color: #f0a500; }
+  .opcao label { flex: 1; cursor: pointer; font-size: 14px; }
+  textarea { width: 100%; min-height: 120px; padding: 14px; border: 2px solid #ddd; border-radius: 8px; font-family: inherit; font-size: 14px; resize: vertical; margin-bottom: 20px; }
+  textarea:focus { outline: none; border-color: #f0a500; }
+  input[type="text"] { width: 100%; padding: 14px; border: 2px solid #ddd; border-radius: 8px; font-family: inherit; font-size: 15px; margin-bottom: 20px; }
+  input[type="text"]:focus { outline: none; border-color: #f0a500; }
+  .navegacao { display: flex; justify-content: space-between; gap: 12px; padding-top: 16px; border-top: 1px solid #eee; }
+  button { padding: 12px 28px; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: inherit; }
+  .btn-primario { background: #1a1a2e; color: white; }
+  .btn-primario:hover { background: #2d2d4a; }
+  .btn-primario:disabled { background: #ccc; cursor: not-allowed; }
+  .btn-secundario { background: transparent; color: #666; }
+  .btn-secundario:hover { background: #f5f5f7; }
+  .dica { background: #fff8dc; border-left: 4px solid #f0a500; padding: 12px 16px; border-radius: 4px; font-size: 13px; color: #8b6914; margin-bottom: 20px; }
+  .resultado { text-align: center; padding: 20px 0; }
+  .resultado h2 { color: #1a1a2e; margin-bottom: 12px; font-size: 24px; }
+  .pontuacao-grande { font-size: 48px; font-weight: 700; color: #f0a500; margin: 20px 0; }
+  .resultado p { color: #555; margin-bottom: 16px; }
+  .loading { display: inline-block; width: 16px; height: 16px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: girar 0.8s linear infinite; margin-right: 8px; vertical-align: middle; }
+  @keyframes girar { to { transform: rotate(360deg); } }
+  .erro-envio { background: #ffe4e4; color: #a00; padding: 12px; border-radius: 6px; margin-top: 16px; font-size: 14px; }
+  @media (max-width: 600px) {
+    body { padding: 0; }
+    .container { border-radius: 0; box-shadow: none; }
+    .content { padding: 24px 20px; }
+    header { padding: 20px; }
+    header h1 { font-size: 18px; }
+    .questao-titulo { font-size: 16px; }
+    button { padding: 10px 20px; font-size: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>Diagnóstico de Programação</h1>
+    <p>Responda com calma. Não tem tempo limite. O objetivo é entender seu raciocínio.</p>
+  </header>
+
+  <div class="progress-bar"><div class="progress-fill" id="progresso"></div></div>
+
+  <div class="content">
+
+    <div class="tela ativa" id="tela-inicio">
+      <h2 style="color: #1a1a2e; margin-bottom: 16px;">Antes de começar</h2>
+      <p style="margin-bottom: 14px;">Este diagnóstico tem <strong>16 perguntas</strong> em blocos crescentes de dificuldade. Deve levar entre <strong>25 e 35 minutos</strong>.</p>
+      <p style="margin-bottom: 14px;">Algumas são de múltipla escolha, outras são abertas (você escreve a resposta).</p>
+      <div class="dica"><strong>Importante:</strong> não tem problema errar. As questões finais são propositalmente mais difíceis — é assim que eu vejo até onde você já chega naturalmente. Responda sem consultar nada.</div>
+      <p style="margin-bottom: 20px;"><strong>Qual seu nome?</strong></p>
+      <input type="text" id="nome-aluno" placeholder="Digite seu nome completo">
+      <div class="navegacao">
+        <span></span>
+        <button class="btn-primario" onclick="iniciar()">Começar →</button>
+      </div>
+    </div>
+
+    <div class="tela" id="tela-q1">
+      <span class="bloco-titulo">Bloco 1 · Reconhecer padrões</span>
+      <div class="questao-num">Pergunta 1 de 16</div>
+      <div class="questao-titulo">Qual raciocínio você usaria?</div>
+      <p class="enunciado">Você tem uma planilha com 500 vendas do mês e quer saber quantas foram feitas pelo vendedor "Pedro".</p>
+      <div class="opcoes">
+        <div class="opcao"><input type="radio" name="q1" value="a" id="q1a"><label for="q1a">Busca — percorro a lista até achar "Pedro" e paro</label></div>
+        <div class="opcao"><input type="radio" name="q1" value="b" id="q1b"><label for="q1b">Contagem — percorro tudo somando 1 toda vez que achar "Pedro"</label></div>
+        <div class="opcao"><input type="radio" name="q1" value="c" id="q1c"><label for="q1c">Filtro — separo em nova lista só as vendas de "Pedro"</label></div>
+        <div class="opcao"><input type="radio" name="q1" value="d" id="q1d"><label for="q1d">Extremo — acho a maior venda feita por "Pedro"</label></div>
+      </div>
+    </div>
+
+    <div class="tela" id="tela-q2">
+      <span class="bloco-titulo">Bloco 1 · Reconhecer padrões</span>
+      <div class="questao-num">Pergunta 2 de 16</div>
+      <div class="questao-titulo">Qual raciocínio você usaria?</div>
+      <p class="enunciado">Você tem uma lista de 200 produtos e quer uma nova lista apenas com os produtos que custam mais de R$ 100.</p>
+      <div class="opcoes">
+        <div class="opcao"><input type="radio" name="q2" value="a" id="q2a"><label for="q2a">Transformação — modifico cada preço na lista</label></div>
+        <div class="opcao"><input type="radio" name="q2" value="b" id="q2b"><label for="q2b">Contagem — conto quantos custam mais de 100</label></div>
+        <div class="opcao"><input type="radio" name="q2" value="c" id="q2c"><label for="q2c">Filtro — percorro e separo os que atendem o critério</label></div>
+        <div class="opcao"><input type="radio" name="q2" value="d" id="q2d"><label for="q2d">Busca — procuro o produto mais caro</label></div>
+      </div>
+    </div>
+
+    <div class="tela" id="tela-q3">
+      <span class="bloco-titulo">Bloco 2 · Símbolos da linguagem</span>
+      <div class="questao-num">Pergunta 3 de 16</div>
+      <div class="questao-titulo">Qual linha está correta?</div>
+      <p class="enunciado">Dentre as opções abaixo, qual usa o símbolo certo pra cada tipo de dado?</p>
+      <div class="opcoes">
+        <div class="opcao"><input type="radio" name="q3" value="a" id="q3a"><label for="q3a">Criar uma lista: <code>cores = ("azul", "vermelho", "amarelo")</code></label></div>
+        <div class="opcao"><input type="radio" name="q3" value="b" id="q3b"><label for="q3b">Criar um dicionário: <code>tinta = ["marca": "Gamblin", "cor": "azul"]</code></label></div>
+        <div class="opcao"><input type="radio" name="q3" value="c" id="q3c"><label for="q3c">Criar uma lista: <code>cores = ["azul", "vermelho", "amarelo"]</code></label></div>
+        <div class="opcao"><input type="radio" name="q3" value="d" id="q3d"><label for="q3d">Criar um texto: <code>nome = Maria</code></label></div>
+      </div>
+    </div>
+
+    <div class="tela" id="tela-q4">
+      <span class="bloco-titulo">Bloco 2 · Símbolos da linguagem</span>
+      <div class="questao-num">Pergunta 4 de 16</div>
+      <div class="questao-titulo">Qual código guarda melhor essa informação?</div>
+      <p class="enunciado">Você quer guardar os dados de uma tinta: marca "Winsor", cor "azul", preço 45.00. Qual opção representa <strong>melhor</strong> essa informação?</p>
+      <div class="opcoes">
+        <div class="opcao"><input type="radio" name="q4" value="a" id="q4a"><label for="q4a"><code>tinta = ("Winsor", "azul", 45.00)</code></label></div>
+        <div class="opcao"><input type="radio" name="q4" value="b" id="q4b"><label for="q4b"><code>tinta = [Winsor, azul, 45.00]</code></label></div>
+        <div class="opcao"><input type="radio" name="q4" value="c" id="q4c"><label for="q4c"><code>tinta = {"marca": "Winsor", "cor": "azul", "preco": 45.00}</code></label></div>
+        <div class="opcao"><input type="radio" name="q4" value="d" id="q4d"><label for="q4d"><code>tinta = "Winsor, azul, 45.00"</code></label></div>
+      </div>
+    </div>
+
+    <div class="tela" id="tela-q5">
+      <span class="bloco-titulo">Bloco 3 · Ler código</span>
+      <div class="questao-num">Pergunta 5 de 16</div>
+      <div class="questao-titulo">O que aparece na tela?</div>
+      <pre>numeros = [1, 2, 3, 4, 5]
+total = 0
+for n in numeros:
+    if n &gt; 2:
+        total = total + n
+print(total)</pre>
+      <div class="opcoes">
+        <div class="opcao"><input type="radio" name="q5" value="a" id="q5a"><label for="q5a">15</label></div>
+        <div class="opcao"><input type="radio" name="q5" value="b" id="q5b"><label for="q5b">9</label></div>
+        <div class="opcao"><input type="radio" name="q5" value="c" id="q5c"><label for="q5c">12</label></div>
+        <div class="opcao"><input type="radio" name="q5" value="d" id="q5d"><label for="q5d">3</label></div>
+      </div>
+    </div>
+
+    <div class="tela" id="tela-q6">
+      <span class="bloco-titulo">Bloco 3 · Ler código</span>
+      <div class="questao-num">Pergunta 6 de 16</div>
+      <div class="questao-titulo">O que esse código devolve?</div>
+      <pre>nomes = ["Ana", "Bruno", "Carla", "Diego"]
+resultado = []
+for nome in nomes:
+    if len(nome) &gt; 3:
+        resultado.append(nome.upper())
+print(resultado)</pre>
+      <div class="opcoes">
+        <div class="opcao"><input type="radio" name="q6" value="a" id="q6a"><label for="q6a">['ANA', 'BRUNO', 'CARLA', 'DIEGO']</label></div>
+        <div class="opcao"><input type="radio" name="q6" value="b" id="q6b"><label for="q6b">['Bruno', 'Carla', 'Diego']</label></div>
+        <div class="opcao"><input type="radio" name="q6" value="c" id="q6c"><label for="q6c">['BRUNO', 'CARLA', 'DIEGO']</label></div>
+        <div class="opcao"><input type="radio" name="q6" value="d" id="q6d"><label for="q6d">['ANA']</label></div>
+      </div>
+    </div>
+
+    <div class="tela" id="tela-q7">
+      <span class="bloco-titulo">Bloco 4 · Achar o erro</span>
+      <div class="questao-num">Pergunta 7 de 16</div>
+      <div class="questao-titulo">Onde está o erro?</div>
+      <pre>idade = 20
+if idade = 18:
+    print("Recém adulto")
+else:
+    print("Outra idade")</pre>
+      <div class="opcoes">
+        <div class="opcao"><input type="radio" name="q7" value="a" id="q7a"><label for="q7a">O <code>=</code> dentro do <code>if</code> deveria ser <code>==</code> (comparação precisa de dois iguais)</label></div>
+        <div class="opcao"><input type="radio" name="q7" value="b" id="q7b"><label for="q7b">O <code>else</code> não pode vir logo depois do <code>if</code>, precisa de <code>elif</code> no meio</label></div>
+        <div class="opcao"><input type="radio" name="q7" value="c" id="q7c"><label for="q7c">Falta <code>int()</code> antes de <code>idade</code> no <code>if</code> pra forçar a comparação</label></div>
+        <div class="opcao"><input type="radio" name="q7" value="d" id="q7d"><label for="q7d">O código funciona e mostra "Outra idade"</label></div>
+      </div>
+    </div>
+
+    <div class="tela" id="tela-q8">
+      <span class="bloco-titulo">Bloco 4 · Achar o erro</span>
+      <div class="questao-num">Pergunta 8 de 16</div>
+      <div class="questao-titulo">O código roda, mas tem um problema lógico. Qual?</div>
+      <pre>precos = [10, 25, 40, 55]
+for preco in precos:
+    total = 0
+    total = total + preco
+print(total)</pre>
+      <div class="opcoes">
+        <div class="opcao"><input type="radio" name="q8" value="a" id="q8a"><label for="q8a">Mostra 130 (soma correta dos preços)</label></div>
+        <div class="opcao"><input type="radio" name="q8" value="b" id="q8b"><label for="q8b">Mostra 10 (pega só o primeiro)</label></div>
+        <div class="opcao"><input type="radio" name="q8" value="c" id="q8c"><label for="q8c">Mostra 55 porque <code>total = 0</code> está dentro do loop e reseta a cada volta</label></div>
+        <div class="opcao"><input type="radio" name="q8" value="d" id="q8d"><label for="q8d">Dá erro porque <code>total</code> não foi definido antes</label></div>
+      </div>
+    </div>
+
+    <div class="tela" id="tela-q9">
+      <span class="bloco-titulo">Bloco 5 · Julgar qualidade</span>
+      <div class="questao-num">Pergunta 9 de 16</div>
+      <div class="questao-titulo">Qual código é melhor escrito?</div>
+      <p class="enunciado">Os dois códigos fazem a mesma coisa: somam os valores de um arquivo. Qual está escrito melhor e por quê?</p>
+      <p style="font-weight:600;margin-bottom:6px;">Código A:</p>
+<pre>arquivo = open("dados.txt")
+total = 0
+for linha in arquivo.readlines():
+    total = total + float(linha)
+arquivo.close()
+print(total)</pre>
+      <p style="font-weight:600;margin-bottom:6px;">Código B:</p>
+<pre>with open("dados.txt") as arquivo:
+    total = 0
+    for linha in arquivo:
+        total = total + float(linha)
+print(total)</pre>
+      <div class="opcoes">
+        <div class="opcao"><input type="radio" name="q9" value="A" id="q9a"><label for="q9a">Código A é melhor</label></div>
+        <div class="opcao"><input type="radio" name="q9" value="B" id="q9b"><label for="q9b">Código B é melhor</label></div>
+        <div class="opcao"><input type="radio" name="q9" value="iguais" id="q9c"><label for="q9c">São equivalentes, tanto faz</label></div>
+      </div>
+      <p style="font-weight:600;margin-bottom:10px;">Justifique sua escolha em 1 ou 2 frases:</p>
+      <textarea id="q9-justificativa" placeholder="Escreva por que você escolheu esse código..."></textarea>
+    </div>
+
+    <div class="tela" id="tela-q10">
+      <span class="bloco-titulo">Bloco 5 · Julgar qualidade</span>
+      <div class="questao-num">Pergunta 10 de 16</div>
+      <div class="questao-titulo">Qual código é melhor escrito?</div>
+      <p style="font-weight:600;margin-bottom:6px;">Código A:</p>
+<pre>try:
+    resultado = 10 / entrada
+except:
+    pass</pre>
+      <p style="font-weight:600;margin-bottom:6px;">Código B:</p>
+<pre>try:
+    resultado = 10 / entrada
+except ZeroDivisionError:
+    print("Não dá pra dividir por zero")
+    resultado = None</pre>
+      <div class="opcoes">
+        <div class="opcao"><input type="radio" name="q10" value="A" id="q10a"><label for="q10a">Código A é melhor (é mais curto e limpo)</label></div>
+        <div class="opcao"><input type="radio" name="q10" value="B" id="q10b"><label for="q10b">Código B é melhor (captura o erro específico e avisa)</label></div>
+        <div class="opcao"><input type="radio" name="q10" value="iguais" id="q10c"><label for="q10c">São equivalentes, tanto faz</label></div>
+      </div>
+      <p style="font-weight:600;margin-bottom:10px;">Justifique:</p>
+      <textarea id="q10-justificativa" placeholder="Explique por que um é melhor que o outro..."></textarea>
+    </div>
+
+    <div class="tela" id="tela-q11">
+      <span class="bloco-titulo">Bloco 6 · Decomposição</span>
+      <div class="questao-num">Pergunta 11 de 16</div>
+      <div class="questao-titulo">Quebre o problema em passos</div>
+      <p class="enunciado"><strong>Cenário:</strong> toda segunda-feira você recebe uma planilha com as vendas da semana. Precisa mandar um email pra cada vendedor com o total que ele vendeu.</p>
+      <p class="enunciado">Sem escrever código — liste entre 4 e 7 passos lógicos que você seguiria pra automatizar isso.</p>
+      <div class="dica">Exemplo de formato:<br>1. Abrir a planilha<br>2. Ler os dados<br>3. ...</div>
+      <textarea id="q11" placeholder="1. &#10;2. &#10;3. &#10;4. ..." style="min-height: 180px;"></textarea>
+    </div>
+
+    <div class="tela" id="tela-q12">
+      <span class="bloco-titulo">Bloco 7 · Arquitetura</span>
+      <div class="questao-num">Pergunta 12 de 16</div>
+      <div class="questao-titulo">Qual o principal problema desse código?</div>
+      <p class="enunciado">Um script funciona — ele lê uma planilha, calcula vendas, envia emails e gera relatório. Tudo em um único arquivo de 300 linhas, sem funções separadas, tudo escrito em sequência.</p>
+      <p class="enunciado">Mesmo funcionando, qual é o principal problema dessa arquitetura?</p>
+      <div class="opcoes">
+        <div class="opcao"><input type="radio" name="q12" value="a" id="q12a"><label for="q12a">Não tem problema — código que funciona está correto, simplicidade é bom</label></div>
+        <div class="opcao"><input type="radio" name="q12" value="b" id="q12b"><label for="q12b">Vai ficar lento porque Python não processa bem arquivos grandes</label></div>
+        <div class="opcao"><input type="radio" name="q12" value="c" id="q12c"><label for="q12c">Se um pedaço quebra, é trabalhoso achar onde — e mudanças num lugar podem afetar outros</label></div>
+        <div class="opcao"><input type="radio" name="q12" value="d" id="q12d"><label for="q12d">Ocupa muita memória RAM do computador</label></div>
+      </div>
+    </div>
+
+    <div class="tela" id="tela-q13">
+      <span class="bloco-titulo">Bloco 7 · Arquitetura</span>
+      <div class="questao-num">Pergunta 13 de 16</div>
+      <div class="questao-titulo">Como você reorganizaria?</div>
+      <p class="enunciado">Pegando o mesmo script do exercício anterior (lê planilha → calcula vendas → envia emails → gera relatório), em quais "pedaços" você quebraria? Liste os pedaços (funções/módulos) que faria sentido existir separadamente.</p>
+      <p class="enunciado">Não precisa escrever código. Só liste os pedaços e uma frase explicando o que cada um faz.</p>
+      <textarea id="q13" placeholder="Exemplo:&#10;- ler_planilha(arquivo) → abre e devolve os dados&#10;- ..." style="min-height: 160px;"></textarea>
+    </div>
+
+    <div class="tela" id="tela-q14">
+      <span class="bloco-titulo">Bloco 8 · Construção de sistema</span>
+      <div class="questao-num">Pergunta 14 de 16</div>
+      <div class="questao-titulo">Por onde você começaria?</div>
+      <p class="enunciado"><strong>Cenário:</strong> seu chefe pede um sistema de cadastro de clientes que salva nome, email e telefone em um banco de dados, e permite consultar clientes depois.</p>
+      <p class="enunciado">Considere que você está começando do zero. Nos <strong>primeiros passos</strong>, o que você faria? O que precisa existir <strong>antes</strong> de começar a escrever o código que salva o cliente?</p>
+      <textarea id="q14" placeholder="Escreva com suas palavras..." style="min-height: 150px;"></textarea>
+    </div>
+
+    <div class="tela" id="tela-q15">
+      <span class="bloco-titulo">Bloco 8 · Construção de sistema</span>
+      <div class="questao-num">Pergunta 15 de 16</div>
+      <div class="questao-titulo">Como proteger o sistema de problemas?</div>
+      <p class="enunciado">No mesmo sistema de cadastro de clientes, imagine que <strong>dois usuários tentem cadastrar no mesmo segundo</strong>, ou que alguém tente cadastrar com email inválido, ou que a internet caia no meio do cadastro.</p>
+      <p class="enunciado">O que você acha que o sistema precisa ter pra lidar com essas situações? Não precisa saber a resposta técnica — descreva com suas palavras o que faria sentido proteger.</p>
+      <textarea id="q15" placeholder="Escreva com suas palavras, sem medo de errar..." style="min-height: 150px;"></textarea>
+    </div>
+
+    <div class="tela" id="tela-q16">
+      <span class="bloco-titulo">Bloco 9 · Proteção de sistema</span>
+      <div class="questao-num">Pergunta 16 de 16</div>
+      <div class="questao-titulo">O que NÃO pode ir pro GitHub público?</div>
+      <p class="enunciado">Você terminou um script que se conecta no email da empresa pra mandar relatórios automáticos. Ele usa sua senha do Gmail pra conseguir mandar. Você vai subir o código no GitHub pra compartilhar com colegas.</p>
+      <p class="enunciado">Qual a abordagem mais correta?</p>
+      <div class="opcoes">
+        <div class="opcao"><input type="radio" name="q16" value="a" id="q16a"><label for="q16a">Pode subir tudo, o GitHub protege os arquivos automaticamente</label></div>
+        <div class="opcao"><input type="radio" name="q16" value="b" id="q16b"><label for="q16b">Não pode subir código nenhum — só a documentação em texto</label></div>
+        <div class="opcao"><input type="radio" name="q16" value="c" id="q16c"><label for="q16c">A senha (e outros dados sensíveis) deve ficar em arquivo separado, que não sobe pro repositório</label></div>
+        <div class="opcao"><input type="radio" name="q16" value="d" id="q16d"><label for="q16d">Só pode subir se o repositório for privado</label></div>
+      </div>
+      <p style="font-weight:600;margin-bottom:10px;">Que outros tipos de dados sensíveis você lembra que NÃO deveriam ir pro código público? (se não souber, escreva "não sei")</p>
+      <textarea id="q16-justificativa" placeholder="Ex: senhas, chaves de API..."></textarea>
+    </div>
+
+    <div class="tela" id="tela-envio">
+      <div class="resultado">
+        <h2>Pronto! Revise antes de enviar</h2>
+        <p>Seu desempenho nas questões de múltipla escolha:</p>
+        <div class="pontuacao-grande" id="pontuacao-exibida">—</div>
+        <p>As questões abertas serão lidas pela professora. Clique em <strong>Enviar</strong> pra mandar suas respostas.</p>
+        <div id="erro-envio"></div>
+      </div>
+    </div>
+
+    <div class="tela" id="tela-final">
+      <div class="resultado">
+        <h2>✓ Respostas enviadas!</h2>
+        <p style="margin-top: 16px;">Obrigada por responder com calma. Sua professora vai analisar e preparar a aula conforme seu nível.</p>
+        <p style="margin-top: 16px; color: #999; font-size: 13px;">Você pode fechar essa aba.</p>
+      </div>
+    </div>
+
+    <div class="navegacao" id="navegacao" style="display:none;">
+      <button class="btn-secundario" id="btn-voltar" onclick="voltar()">← Voltar</button>
+      <button class="btn-primario" id="btn-proximo" onclick="proximo()">Próxima →</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const URL_SHEETS = "https://script.google.com/macros/s/AKfycbymftBTuw085ecBQDzrwVcsAgfvcBg56S9YlHcZM8Y-mYDji4xefHTjk-tm2Pm7hap0/exec";
+
+const telas = [
+  "tela-inicio",
+  "tela-q1", "tela-q2",
+  "tela-q3", "tela-q4",
+  "tela-q5", "tela-q6",
+  "tela-q7", "tela-q8",
+  "tela-q9", "tela-q10",
+  "tela-q11",
+  "tela-q12", "tela-q13",
+  "tela-q14", "tela-q15",
+  "tela-q16",
+  "tela-envio",
+  "tela-final"
+];
+
+const gabarito = {
+  q1: "b", q2: "c", q3: "c", q4: "c",
+  q5: "c", q6: "c", q7: "a", q8: "c",
+  q9: "B", q10: "B", q12: "c", q16: "c"
+};
+
+let telaAtual = 0;
+let respostas = {};
+
+document.querySelectorAll('.opcao').forEach(op => {
+  op.addEventListener('click', () => {
+    const radio = op.querySelector('input[type="radio"]');
+    if (!radio) return;
+    radio.checked = true;
+    const grupo = radio.name;
+    document.querySelectorAll(`input[name="${grupo}"]`).forEach(r => {
+      r.closest('.opcao').classList.remove('selecionada');
+    });
+    op.classList.add('selecionada');
+  });
+});
+
+function iniciar() {
+  const nome = document.getElementById('nome-aluno').value.trim();
+  if (!nome) { alert('Por favor, digite seu nome antes de começar.'); return; }
+  respostas.nome = nome;
+  telaAtual = 1;
+  mostrarTela();
+  document.getElementById('navegacao').style.display = 'flex';
+}
+
+function mostrarTela() {
+  telas.forEach(id => document.getElementById(id).classList.remove('ativa'));
+  document.getElementById(telas[telaAtual]).classList.add('ativa');
+  const progresso = ((telaAtual) / (telas.length - 1)) * 100;
+  document.getElementById('progresso').style.width = progresso + '%';
+  const btnVoltar = document.getElementById('btn-voltar');
+  const btnProximo = document.getElementById('btn-proximo');
+  btnVoltar.style.visibility = telaAtual <= 1 ? 'hidden' : 'visible';
+  if (telas[telaAtual] === 'tela-envio') {
+    btnProximo.textContent = 'Enviar respostas';
+    btnProximo.onclick = enviar;
+  } else if (telas[telaAtual] === 'tela-final') {
+    document.getElementById('navegacao').style.display = 'none';
+  } else {
+    btnProximo.textContent = 'Próxima →';
+    btnProximo.onclick = proximo;
+  }
+  window.scrollTo(0, 0);
+}
+
+function coletarResposta() {
+  const tela = telas[telaAtual];
+  const mc = { 'tela-q1':'q1','tela-q2':'q2','tela-q3':'q3','tela-q4':'q4',
+               'tela-q5':'q5','tela-q6':'q6','tela-q7':'q7','tela-q8':'q8',
+               'tela-q12':'q12','tela-q16':'q16' };
+  if (mc[tela]) {
+    const nome = mc[tela];
+    const sel = document.querySelector(`input[name="${nome}"]:checked`);
+    if (!sel) return false;
+    respostas[nome] = sel.value;
+    if (nome === 'q16') {
+      respostas.q16_justificativa = document.getElementById('q16-justificativa').value.trim() || "(vazio)";
+    }
+    return true;
+  }
+  if (tela === 'tela-q9') {
+    const sel = document.querySelector('input[name="q9"]:checked');
+    const just = document.getElementById('q9-justificativa').value.trim();
+    if (!sel || !just) return false;
+    respostas.q9 = sel.value;
+    respostas.q9_justificativa = just;
+    return true;
+  }
+  if (tela === 'tela-q10') {
+    const sel = document.querySelector('input[name="q10"]:checked');
+    const just = document.getElementById('q10-justificativa').value.trim();
+    if (!sel || !just) return false;
+    respostas.q10 = sel.value;
+    respostas.q10_justificativa = just;
+    return true;
+  }
+  const abertas = { 'tela-q11':'q11','tela-q13':'q13','tela-q14':'q14','tela-q15':'q15' };
+  if (abertas[tela]) {
+    const nome = abertas[tela];
+    const val = document.getElementById(nome).value.trim();
+    if (!val) return false;
+    respostas[nome] = val;
+    return true;
+  }
+  return true;
+}
+
+function proximo() {
+  if (!coletarResposta()) { alert('Por favor, responda antes de avançar.'); return; }
+  if (telas[telaAtual + 1] === 'tela-envio') { calcularPontuacao(); }
+  telaAtual++;
+  mostrarTela();
+}
+
+function voltar() {
+  if (telaAtual > 1) { telaAtual--; mostrarTela(); }
+}
+
+function calcularPontuacao() {
+  let acertos = 0, total = 0;
+  for (let q in gabarito) {
+    total++;
+    if (respostas[q] === gabarito[q]) acertos++;
+  }
+  respostas.pontuacao = `${acertos}/${total}`;
+  document.getElementById('pontuacao-exibida').textContent = `${acertos}/${total}`;
+}
+
+function enviar() {
+  const btn = document.getElementById('btn-proximo');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading"></span>Enviando...';
+  fetch(URL_SHEETS, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(respostas)
+  })
+  .then(() => { telaAtual++; mostrarTela(); })
+  .catch(err => {
+    document.getElementById('erro-envio').innerHTML =
+      '<div class="erro-envio">Erro ao enviar. Verifique sua conexão e tente de novo.</div>';
+    btn.disabled = false;
+    btn.textContent = 'Tentar de novo';
+  });
+}
+</script>
+
+</body>
+</html>
